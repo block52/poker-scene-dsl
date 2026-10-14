@@ -43,7 +43,11 @@ Each sentence names a **subject** and a **verb**. The DSL works out which player
 | `X shoves` (`jams`, `goes all-in`) | whichever of all-in / raise / bet / call the engine offers, at its max |
 | `X shows`, `X mucks` | |
 | `X sits out`, `X sits in`, `X sits in and waits`, `X leaves` (`stands up`), `X tops up N` | |
-| `deal`, `new hand`, `run it out` | no subject: sent by the seat on the clock. `run it out` shows every pending reveal until the hand ends. |
+| `X joins seat N with B` (`sits down in seat N for B`) | a join; X is a label or an address |
+| `deal`, `new hand`, `new hand with deck AS-KD-…`, `run it out` | no subject: sent by the seat on the clock. `run it out` shows every pending reveal until the hand ends. |
+| `time runs out` | a timeout for the seat on the clock, ten minutes after the last action |
+
+Each accepted action is stamped a second after the previous one, so a scenario always runs on the same timeline.
 
 Amounts are chips (`300`), or multiples of the blinds (`3bb`, `2sb`).
 

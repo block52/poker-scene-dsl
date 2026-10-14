@@ -31,7 +31,20 @@ func New(table Table, labels map[string]string) *Scene {
 // State is the table's current state.
 func (s *Scene) State() State { return s.table.State() }
 
-func (s *Scene) tick() int64 { s.clock += 1000; return s.clock }
+// send applies a to the table, stamping it a second after the last accepted
+// action (ten minutes and a second for a timeout). The clock moves only when
+// the engine accepts, so a rejected sentence leaves the timeline unchanged.
+func (s *Scene) send(a Action) error {
+	a.Time = s.clock + 1000
+	if a.Action == ActTimeout {
+		a.Time += 10 * 60 * 1000
+	}
+	if err := s.table.Apply(a); err != nil {
+		return err
+	}
+	s.clock = a.Time
+	return nil
+}
 
 // Do parses one sentence and applies it.
 func (s *Scene) Do(sentence string) error {
@@ -51,7 +64,7 @@ func (s *Scene) Join(subject string, seat int, buyIn *big.Int) error {
 	if err != nil {
 		return err
 	}
-	return s.table.Apply(Action{Player: addr, Action: ActJoin, Amount: buyIn, Seat: seat, Time: s.tick()})
+	return s.send(Action{Player: addr, Action: ActJoin, Amount: buyIn, Seat: seat})
 }
 
 // NewHandWith starts the next hand with an explicit deck, performed by subject.
@@ -60,7 +73,7 @@ func (s *Scene) NewHandWith(subject string, deck []string) error {
 	if err != nil {
 		return err
 	}
-	return s.table.Apply(Action{Player: addr, Action: ActNewHand, Deck: deck, Time: s.tick()})
+	return s.send(Action{Player: addr, Action: ActNewHand, Deck: deck})
 }
 
 // Apply runs a parsed step.
@@ -69,13 +82,26 @@ func (s *Scene) Apply(step Step) error {
 	case Deal:
 		return s.nonPlayer(ActDeal, nil)
 	case NewHand:
-		var deck []string
-		if s.NextDeck != nil {
+		deck := step.Deck
+		if deck == nil && s.NextDeck != nil {
 			deck = s.NextDeck()
 		}
 		return s.nonPlayer(ActNewHand, deck)
 	case RunOut:
 		return s.runOut()
+	case TimeOut:
+		return s.send(Action{Action: ActTimeout})
+	case Join:
+		buyIn, err := s.amount(s.table.State(), step.Amount)
+		if err != nil {
+			return err
+		}
+		addr, err := s.Resolve(step.Subject)
+		if err != nil {
+			// Not seated yet: a raw address joins as-is.
+			addr = strings.TrimSpace(step.Subject)
+		}
+		return s.send(Action{Player: addr, Action: ActJoin, Amount: buyIn, Seat: step.Seat})
 	}
 
 	addr, err := s.Resolve(step.Subject)
@@ -87,7 +113,7 @@ func (s *Scene) Apply(step Step) error {
 	if p == nil {
 		return fmt.Errorf("%s is not seated", step.Subject)
 	}
-	a := Action{Player: addr, Time: s.tick()}
+	a := Action{Player: addr}
 
 	switch step.Verb {
 	case PostSmallBlind:
@@ -162,7 +188,7 @@ func (s *Scene) Apply(step Step) error {
 	default:
 		return fmt.Errorf("unknown verb %q", step.Verb)
 	}
-	return s.table.Apply(a)
+	return s.send(a)
 }
 
 // nonPlayer sends a subjectless action as the player on the clock, or the
@@ -186,7 +212,7 @@ func (s *Scene) nonPlayer(action string, deck []string) error {
 	if performer == "" {
 		return fmt.Errorf("nobody can %s", action)
 	}
-	return s.table.Apply(Action{Player: performer, Action: action, Deck: deck, Time: s.tick()})
+	return s.send(Action{Player: performer, Action: action, Deck: deck})
 }
 
 // runOut answers every showdown reveal with a show until the hand ends.
@@ -205,7 +231,7 @@ func (s *Scene) runOut() error {
 		if p == nil || legal(p, ActShow) == nil {
 			return fmt.Errorf("showdown is waiting on seat %d, which cannot show", st.NextToAct)
 		}
-		if err := s.table.Apply(Action{Player: p.Address, Action: ActShow, Time: s.tick()}); err != nil {
+		if err := s.send(Action{Player: p.Address, Action: ActShow}); err != nil {
 			return err
 		}
 	}

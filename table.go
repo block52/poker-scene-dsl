@@ -56,6 +56,7 @@ const (
 	ActSitInAndWait   = "sit-in-and-wait"
 	ActSitOut         = "sit-out"
 	ActTopUp          = "top-up"
+	ActTimeout        = "timeout"
 )
 
 // LegalAction is one action a player may take now, with its amount range when
@@ -98,7 +99,8 @@ type State struct {
 
 // Action is one engine action. Amount is the chips going in with this action;
 // for a bet, raise or call, Total is the player's street total afterwards. An
-// adapter sends whichever its engine expects.
+// adapter sends whichever its engine expects. A timeout has no Player: it acts
+// for whoever is on the clock, ten minutes after the previous action.
 type Action struct {
 	Player string
 	Action string

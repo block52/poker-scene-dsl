@@ -3,6 +3,7 @@ package scene
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -27,8 +28,10 @@ const (
 	Leave          Verb = "leave"
 	TopUp          Verb = "top up"
 	Deal           Verb = "deal"     // no subject
-	NewHand        Verb = "new hand" // no subject
+	NewHand        Verb = "new hand" // no subject; optional "with deck AS-KD-…"
 	RunOut         Verb = "run out"  // no subject: answer every showdown reveal until the hand ends
+	TimeOut        Verb = "time out" // no subject: the clock runs out on the seat to act
+	Join           Verb = "join"     // Seat and Amount (the buy-in)
 )
 
 // Step is a parsed sentence. Amount is the raw token ("300", "3bb", "2sb"),
@@ -37,6 +40,10 @@ type Step struct {
 	Subject string
 	Verb    Verb
 	Amount  string
+	// Seat is the seat to take (join only).
+	Seat int
+	// Deck is the next hand's deck, top first (new hand only; nil = none given).
+	Deck []string
 }
 
 // Verbs, longest phrase first so "sits in and waits" wins over "sits in".
@@ -64,7 +71,11 @@ var verbs = []struct {
 	{TopUp, regexp.MustCompile(`(?i)^(.+?)\s+tops?\s+up(?:\s+by)?\s+(\S+)$`), []int{2}},
 }
 
-var amountToken = regexp.MustCompile(`(?i)^\d+(?:bb|sb)?$`)
+var (
+	amountToken = regexp.MustCompile(`(?i)^\d+(?:bb|sb)?$`)
+	joinRe      = regexp.MustCompile(`(?i)^(.+?)\s+(?:joins|sits\s+down)(?:\s+(?:in|at))?\s+seat\s+(\d+)\s+(?:with|for)\s+(\S+)$`)
+	newHandRe   = regexp.MustCompile(`(?i)^(?:new|next)\s+hand\s+with\s+deck\s+(\S+)$`)
+)
 
 // Parse turns one sentence into a [Step]. It does not look at a table.
 func Parse(sentence string) (Step, error) {
@@ -79,6 +90,18 @@ func Parse(sentence string) (Step, error) {
 		return Step{Verb: NewHand}, nil
 	case "run it out", "run out", "showdown":
 		return Step{Verb: RunOut}, nil
+	case "time runs out", "timeout", "the clock runs out":
+		return Step{Verb: TimeOut}, nil
+	}
+	if m := newHandRe.FindStringSubmatch(s); m != nil {
+		return Step{Verb: NewHand, Deck: strings.Split(m[1], "-")}, nil
+	}
+	if m := joinRe.FindStringSubmatch(s); m != nil {
+		seat, _ := strconv.Atoi(m[2])
+		if !amountToken.MatchString(m[3]) {
+			return Step{}, fmt.Errorf("scene: %q: buy-in %q is not N, Nbb or Nsb", sentence, m[3])
+		}
+		return Step{Subject: strings.TrimSpace(m[1]), Verb: Join, Seat: seat, Amount: m[3]}, nil
 	}
 	for _, v := range verbs {
 		m := v.re.FindStringSubmatch(s)
@@ -98,5 +121,5 @@ func Parse(sentence string) (Step, error) {
 	}
 	return Step{}, fmt.Errorf("scene: could not parse %q. Verbs: posts small/big blind, folds, checks, calls, "+
 		"bets N, raises to N, raises by N, shoves, shows, mucks, sits out, sits in, sits in and waits, "+
-		"leaves, tops up N; and with no subject: deal, new hand, run it out", sentence)
+		"leaves, tops up N, joins seat N with B; and with no subject: deal, new hand [with deck …], run it out, time runs out", sentence)
 }

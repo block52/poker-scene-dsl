@@ -35,6 +35,9 @@ func TestParse(t *testing.T) {
 		{"deal", Step{Verb: Deal}},
 		{"new hand", Step{Verb: NewHand}},
 		{"run it out", Step{Verb: RunOut}},
+		{"time runs out", Step{Verb: TimeOut}},
+		{"Dave joins seat 4 with 1000", Step{Subject: "Dave", Verb: Join, Seat: 4, Amount: "1000"}},
+		{"player05 sits down in seat 3 for 20bb", Step{Subject: "player05", Verb: Join, Seat: 3, Amount: "20bb"}},
 	}
 	for _, c := range cases {
 		got, err := Parse(c.in)
@@ -42,9 +45,12 @@ func TestParse(t *testing.T) {
 			t.Errorf("Parse(%q): %v", c.in, err)
 			continue
 		}
-		if got != c.want {
+		if got.Subject != c.want.Subject || got.Verb != c.want.Verb || got.Amount != c.want.Amount || got.Seat != c.want.Seat {
 			t.Errorf("Parse(%q) = %+v, want %+v", c.in, got, c.want)
 		}
+	}
+	if got, err := Parse("new hand with deck AS-KD-2C"); err != nil || got.Verb != NewHand || len(got.Deck) != 3 || got.Deck[1] != "KD" {
+		t.Errorf("new hand with deck: got %+v, %v", got, err)
 	}
 	for _, bad := range []string{"", "Alice dances", "Alice bets lots"} {
 		if _, err := Parse(bad); err == nil {
@@ -175,4 +181,28 @@ func TestAssertions(t *testing.T) {
 	sc.AssertNotLegal("MP", ActCheck)
 	sc.AssertRange("MP", ActCall, "400", "400")
 	sc.AssertChips("6400")
+}
+
+func TestJoinAndTimeout(t *testing.T) {
+	r := sixMax()
+	sc := New(r, map[string]string{"Dave": "addrD"})
+	if err := sc.Do("Dave joins seat 7 with 10bb"); err != nil {
+		t.Fatal(err)
+	}
+	if err := sc.Do("player09 joins seat 8 with 500"); err != nil {
+		t.Fatal(err)
+	}
+	if err := sc.Do("time runs out"); err != nil {
+		t.Fatal(err)
+	}
+	j1, j2, to := r.sent[0], r.sent[1], r.sent[2]
+	if j1.Action != ActJoin || j1.Player != "addrD" || j1.Seat != 7 || j1.Amount.Int64() != 1000 {
+		t.Fatalf("join by label: got %+v", j1)
+	}
+	if j2.Player != "player09" || j2.Seat != 8 {
+		t.Fatalf("join by raw address: got %+v", j2)
+	}
+	if to.Action != ActTimeout || to.Player != "" || to.Time-j2.Time < 10*60*1000 {
+		t.Fatalf("timeout: got %+v", to)
+	}
 }
