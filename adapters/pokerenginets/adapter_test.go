@@ -106,12 +106,26 @@ func TestOutOfTurnAndIllegalActionsAreRejected(t *testing.T) {
 }
 
 func TestMinimumReraise(t *testing.T) {
-	knownEngineBug(t, "the no-limit minimum raise is twice the bet, not the bet plus the last raise")
+	knownEngineBug(t, "the first preflop raise is sized from 0, not from the big blind (Ge-limin/poker-engine-ts#2)")
 	sc := threeHanded(t, nil)
 	sc.Act("BTN raises to 300")
 	// The raise was 200 more, so the smallest re-raise is to 500. Bob has 50
 	// in, so 450 goes in; the most is his whole stack.
 	sc.AssertRange("SB", "raise", "450", "950")
+}
+
+func TestLaterReraisesUseTheLastRaise(t *testing.T) {
+	sc := threeHanded(t, nil, "10000", "10000", "10000")
+	sc.Act("BTN raises to 300", "SB raises to 1000")
+	// 1000 is a raise of 700, so the next is to at least 1700; Carol has 100
+	// in. (Only the min is checked: the max hits Ge-limin/poker-engine-ts#1.)
+	for _, p := range sc.State().Players {
+		for _, l := range p.Legal {
+			if p.Address == "carol" && l.Action == "raise" && l.Min.Int64() != 1600 {
+				t.Fatalf("BB min re-raise: %s more, want 1600 (to 1700)", l.Min)
+			}
+		}
+	}
 }
 
 func TestOpeningMinimumRaise(t *testing.T) {
@@ -189,7 +203,7 @@ func TestPostflopBettingFourHanded(t *testing.T) {
 // so the call is charged in full on top of the blind.
 
 func TestSmallBlindCompletesAndBigBlindChecks(t *testing.T) {
-	knownEngineBug(t, "posted blinds are not credited towards a preflop call")
+	knownEngineBug(t, "posted blinds are not credited towards a preflop call (Ge-limin/poker-engine-ts#1)")
 	sc := threeHanded(t, nil)
 	sc.Act("BTN calls")
 	sc.AssertRange("SB", "call", "50", "50") // 50 posted, 50 more completes
@@ -202,7 +216,7 @@ func TestSmallBlindCompletesAndBigBlindChecks(t *testing.T) {
 }
 
 func TestBlindsCallARaise(t *testing.T) {
-	knownEngineBug(t, "posted blinds are not credited towards a preflop call")
+	knownEngineBug(t, "posted blinds are not credited towards a preflop call (Ge-limin/poker-engine-ts#1)")
 	sc := threeHanded(t, nil)
 	sc.Act("BTN raises to 300", "SB calls", "BB calls")
 	sc.AssertRound(scene.Flop)

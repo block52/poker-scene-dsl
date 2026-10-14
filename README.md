@@ -84,8 +84,8 @@ poker-engine-ts seats players when a session is created, and posts blinds and de
 
 The scenarios cover blinds, folds, rejections, the opening minimum raise, showdowns, a three-way all-in with side pots and an uncalled return, a split pot, button and blind movement, and four-handed postflop play with a short all-in. They also found two engine bugs, which are kept as skipped scenarios:
 
-- **A posted blind isn't credited towards a preflop call.** The small blind is charged 100 to complete a 100 big blind, and the big blind then faces a bet instead of having the option to check. When the blinds call a raise to 300, the pot comes to 1050 instead of 900.
-- **The no-limit minimum re-raise is twice the bet** (`double-last-bet`), not the bet plus the last raise. After a raise to 300 it requires 600, not 500.
+- **A posted blind isn't credited towards a preflop call** ([upstream #1](https://github.com/Ge-limin/poker-engine-ts/issues/1)). The small blind is charged 100 to complete a 100 big blind, and the big blind then faces a bet instead of having the option to check. When the blinds call a raise to 300, the pot comes to 1050 instead of 900.
+- **The first preflop raise is sized from 0, not from the big blind,** so after a raise to 300 the minimum re-raise is to 600, not 500. Later raises are sized correctly. ([upstream #2](https://github.com/Ge-limin/poker-engine-ts/issues/2))
 
 ## License
 
