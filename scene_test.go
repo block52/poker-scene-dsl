@@ -36,6 +36,10 @@ func TestParse(t *testing.T) {
 		{"new hand", Step{Verb: NewHand}},
 		{"run it out", Step{Verb: RunOut}},
 		{"time runs out", Step{Verb: TimeOut}},
+		{"15 minutes pass", Step{Verb: Wait, WaitMs: 15 * 60_000}},
+		{"1 hour passes", Step{Verb: Wait, WaitMs: 3_600_000}},
+		{"30 seconds pass", Step{Verb: Wait, WaitMs: 30_000}},
+		{"Alice starts the tournament", Step{Subject: "Alice", Verb: Start}},
 		{"Dave joins seat 4 with 1000", Step{Subject: "Dave", Verb: Join, Seat: 4, Amount: "1000"}},
 		{"player05 sits down in seat 3 for 20bb", Step{Subject: "player05", Verb: Join, Seat: 3, Amount: "20bb"}},
 	}

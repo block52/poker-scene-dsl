@@ -57,6 +57,7 @@ const (
 	ActSitOut         = "sit-out"
 	ActTopUp          = "top-up"
 	ActTimeout        = "timeout"
+	ActStart          = "start"
 )
 
 // LegalAction is one action a player may take now, with its amount range when

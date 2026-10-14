@@ -91,6 +91,10 @@ func (s *Scene) Apply(step Step) error {
 		return s.runOut()
 	case TimeOut:
 		return s.send(Action{Action: ActTimeout})
+	case Wait:
+		// Time passes with nothing sent: the next action carries the later clock.
+		s.clock += step.WaitMs
+		return nil
 	case Join:
 		buyIn, err := s.amount(s.table.State(), step.Amount)
 		if err != nil {
@@ -138,6 +142,8 @@ func (s *Scene) Apply(step Step) error {
 		a.Action = ActSitInAndWait
 	case Leave:
 		a.Action = ActLeave
+	case Start:
+		a.Action = ActStart
 	case Call:
 		a.Action = ActCall
 		a.Amount = legalMin(p, ActCall, nil)
