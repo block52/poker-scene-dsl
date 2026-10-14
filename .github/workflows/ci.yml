@@ -11,6 +11,12 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # poker-engine-ts for the adapter scenarios (skipped when absent).
+      - run: npm ci
+        working-directory: adapters/pokerenginets
       - run: test -z "$(gofmt -l .)"
       - run: go vet ./...
       - run: go test ./...

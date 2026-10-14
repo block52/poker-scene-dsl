@@ -68,6 +68,25 @@ type Table interface {
 
 Every bet, raise and call carries both `Amount` (the chips going in now) and `Total` (the player's street total afterwards), so the adapter sends whichever its engine expects. `Player.StreetBet` is what the player already has in on this street; "raises to" needs it.
 
+## Adapters
+
+### [poker-engine-ts](https://github.com/Ge-limin/poker-engine-ts)
+
+`adapters/pokerenginets` drives the TypeScript engine through a small Node bridge. To run it:
+
+```sh
+cd adapters/pokerenginets && npm ci
+go test ./adapters/pokerenginets                          # scenarios that pass
+POKER_ENGINE_TS_BUGS=1 go test -v ./adapters/pokerenginets # include the known-bug scenarios
+```
+
+poker-engine-ts seats players when a session is created, and posts blinds and deals by itself. So joins work until the first hand, blind, `sits in` and `deal` sentences are no-ops, and leaving, sitting out, topping up and timeouts aren't supported.
+
+The scenarios cover blinds, folds, rejections, the opening minimum raise, showdowns, a three-way all-in with side pots and an uncalled return, a split pot, button and blind movement, and four-handed postflop play with a short all-in. They also found two engine bugs, which are kept as skipped scenarios:
+
+- **A posted blind isn't credited towards a preflop call.** The small blind is charged 100 to complete a 100 big blind, and the big blind then faces a bet instead of having the option to check. When the blinds call a raise to 300, the pot comes to 1050 instead of 900.
+- **The no-limit minimum re-raise is twice the bet** (`double-last-bet`), not the bet plus the last raise. After a raise to 300 it requires 600, not 500.
+
 ## License
 
 MIT

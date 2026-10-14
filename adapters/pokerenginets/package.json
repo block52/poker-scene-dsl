@@ -1,0 +1,9 @@
+{
+  "name": "poker-scene-dsl-adapter-poker-engine-ts",
+  "private": true,
+  "type": "module",
+  "description": "Node bridge that lets the Go scene DSL drive poker-engine-ts.",
+  "dependencies": {
+    "poker-engine-ts": "0.1.3"
+  }
+}
